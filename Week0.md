@@ -12,6 +12,8 @@
 - SELECT, INSERT, UPDATE, DELETE 등등
 - ex) 학생 테이블에 새 전화번호를 추가
 
+<br/>
+
 ## SQL와 NoSQL
 
 ### SQL
