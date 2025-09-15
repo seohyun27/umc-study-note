@@ -179,6 +179,8 @@ DB에서의 상속 관계 표현은 아래의 세 가지 방법을 가장 대표
 ![IA_for_UMC.png](IA_for_UMC.png)
 ![WF_for_UMC.png](WF_for_UMC.png)
 
+<br/>
+
 ### 미션 기록 
 ![ERD_Java.png](./ERD_Java.png)
 
