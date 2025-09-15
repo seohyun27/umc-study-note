@@ -16,7 +16,7 @@
 <br/>
 
 ## 0주차 미션 회고
-![ERD.png](../Week00/ERD.png)
+![ERD.png](ERD.png)
 
 ### 유저 선호 음식
 - 나의 경우 FavoriteFood 테이블을 만들어서 ENUM 타입의 문자열(food 변수)과 유저 id를 저장할 수 있도록 테이블을 구성했다
