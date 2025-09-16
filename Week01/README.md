@@ -168,6 +168,20 @@ where um.is_complete = 1 and um.user_id = 1 and m.deadline >= '2025-09-08';
 - 결과로 만들어진 가상 테이블에서 이미 완료되었고 1번 유저가 수행하였으며 마감 기한이 2025-09-08 이후인 것만을 남긴다
 - 조건을 통과한 모든 행의 미션 점수(point)를 sum한다
 
+#### 문법 순서
+DB가 쿼리를 처리하는 순서와 별개로 쿼리를 작성할 때는 아래의 작성 순서를 지켜야 한다
+1. SELECT : 어떤 칼럼을 보여줄지를 결정
+2. FROM : 데이터를 가져올 기본 테이블을 지정
+3. JOIN (INNER, LEFT 등) : FROM 테이블에 연결할 다른 테이블을 지정
+4. WHERE : 필터링 조건을 지정
+5. GROUP BY : 그룹화. 여러 행을 특정 칼럼을 기준으로 묶어 데이터를 그룹화 → 이후 각 그룹에 대해 SUM(), COUNT() 등의 집계 합수를 사용한다
+6. HAVING : 그룹화된 결과를 필터링할 조건을 지정
+7. ORDER BY : 최종 결과를 어떤 순서로 정렬할지 결정
+8. LIMIT: 최종 결과 중 보여줄 행의 개수를 제한
+> 주의! WHERE과 HAVING을 구분할 것! <br/>
+> WHERE : GROUP BY를 하기 전 **원본 테이블의 개별 행**을 필터링 <br/>
+> HAVING : GROUP BY를 한 후 **집계된 그룹**을 필터링 <br/>
+
 <br/>
 
 ## 페이징
@@ -256,3 +270,52 @@ limit 15;
 <br/>
 
 ## ✅ 미션 기록
+### 특정 가게에 달린 모든 리뷰 가져오기
+```sql
+SELECT *
+FROM shop_review AS sr
+INNER JOIN shop AS s ON sr.shop_id = s.id
+INNER JOIN user AS u ON sr.user_id = u.id
+LEFT JOIN review_photo AS rp ON sr.id = rp.review_id
+WHERE sr.shop_id = ?;
+```
+- 가게 리뷰를 조회할 때 가게와 유저는 반드시 존재하여야 한다 → INNER JOIN 사용
+- 이때의 조건은 가게 리뷰의 가게 아이디와 유저 아이디가 해당 테이블들의 PK와 일치하여야 한다
+- 리뷰 사진은 있을 수도 있고 없을 수도 있으므로 LEFT JOIN을 사용한다. review_photo의 리뷰 id와 리뷰 테이블의 PK가 일치하여 한다
+- 완성된 가상 테이블에서 WHERE문을 사용해 찾으려는 가게 id과 리뷰 테이블의 shop_id가 일치하는 데이터만을 select 한다
+- ?의 자리에 프론트에서 받아온 가게 id를 삽입할 수 있다
+- 필요하다면 SELECT의 뒤에 원하는 데이터만을 명시할 수 있다
+
+### 마이 페이지 정보 가져오기
+```sql
+SELECT u.user_name, u.gender, u.birth_date, u.address, SUM(m.point) AS total_point
+FROM user AS u
+LEFT JOIN user_mission AS um ON u.user_id = um.user_id
+LEFT JOIN mission AS m ON um.mission_id = m.mission_id
+WHERE u.user_id = ?
+GROUP BY u.user_id, u.user_name, u.gender, u.birth_date, u.address;
+```
+- user 테이블 가져오기
+- user 테이블에 user_mission 테이블을 LEFT JOIN
+- 이때 유저 id가 일치하는 데이터들만 join 할 것
+- 위의 결과 테이블에 mission 테이블을 LEFT JOIN
+- 이때 미션 id가 일치하는 데이터들만 join 할 것
+- 결과 테이블에서 프론트가 요청한 user_id를 가진 데이터만을 가져올 것
+- #### GROUP BY
+- 이후 GROUP BY를 이용해 u.user_id를 기준으로 그룹을 묶어준다
+- 만약 유저가 3번의 미션을 수행했다면 point외에 유저의 정보는 3번으로 중복되어 표현된다
+- 그러나 GROUP BY를 사용하면 필터링된 3줄의 데이터를 단 하나의 그룹으로 묶어버린다
+- 즉, 3줄의 데이터를 단 하나의 행으로 요약해 주는 것이다
+#### GROUP BY 뒤에 user의 나머지 칼럼을 명시한 이유
+- 엄격한 DB의 경우 SELECT 절에 작성되어 있지만 집계 함수로 묶이지 않은 모든 컬럼은 반드시 GROUP BY 절에 명시되어야 한다는 규칙이 존재한다
+- 따라서 모든 칼럼을 GROUP BY에 적어주는 편이 호완성 높은 코드를 작성하기에 유리하다
+#### 결론
+- 이후 완성된 테이블에서 user의 기본 정보 칼럼들(name, gender, birth_date 등등)을 가져오며 SUM(m.point)를 사용해 합계 포인트를 가져온다
+- 이때 AS를 사용해 만들어진 결과에 total_point라는 별칭을 붙여준다 → 사용이 편리해진다
+- SUM(m.point) 대신 COALESCE(SUM(m.point), 0)을 사용하면 SUM(m.point)이 NULL값일 때 0을 반환하도록 쿼리를 수정할 수 있다
+#### Q. 쿼리문을 한 번에 작성하는 이유
+- 유저의 정보 가져오기, 해당 유저의 포인트 계산하기 이렇게 두 개의 정보를 원하는 경우에도 한 페이지의 내용은 한 번의 쿼리로 작성되는 것이 좋다
+- 두 번에 나눠 쿼리를 작성할 경우 DB에 두 번의 요청이 가게 되므로 비효율적이다
+- 또한 두 쿼리의 실행 사이 데이터가 변경될 가능성이 있다
+
+
