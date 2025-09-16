@@ -286,9 +286,12 @@ WHERE sr.shop_id = ?;
 - ?의 자리에 프론트에서 받아온 가게 id를 삽입할 수 있다
 - 필요하다면 SELECT의 뒤에 원하는 데이터만을 명시할 수 있다
 
+<br/>
+
 ### 마이 페이지 정보 가져오기
 ```sql
-SELECT u.user_name, u.gender, u.birth_date, u.address, SUM(m.point) AS total_point
+SELECT u.user_name, u.gender, u.birth_date, u.user_address,
+       SUM(m.point) AS total_point
 FROM user AS u
 LEFT JOIN user_mission AS um ON u.user_id = um.user_id
 LEFT JOIN mission AS m ON um.mission_id = m.mission_id
@@ -318,28 +321,53 @@ GROUP BY u.user_id, u.user_name, u.gender, u.birth_date, u.address;
 - 두 번에 나눠 쿼리를 작성할 경우 DB에 두 번의 요청이 가게 되므로 비효율적이다
 - 또한 두 쿼리의 실행 사이 데이터가 변경될 가능성이 있다
 
+<br/>
+
 ### 미션 모아보기
 #### 페이징 전의 코드
 ```sql
-SELECT um.is_complete, um.finish_at, m.dtype, m.mission_text, m.mission_point, m.finish_date
+SELECT um.is_complete, um.finish_at, m.dtype, 
+       m.mission_text, m.mission_point, m.finish_date, s.shop_name
 FROM user_mission AS um
 INNER JOIN mission AS m ON um.mission_id = m.mission_id
+INNER JOIN shop AS s ON m.shop_id = s.shop_id
 WHERE um.user_id = ?
 ORDER BY m.finish_date DESC
 ```
 - user_mission에 mission 테이블을 join 한다
 - 이때 미션 id가 같은 데이터들만이 join 된다
+- 결과 테이블에 shop 테이블을 join 한다 (가게 이름을 가져와야 함)
 - 이후 결과 테이블에서 프론트가 요청한 user_id를 가진 데이터만을 가져온다
 - 가져온 데이터들을 마감 시간을 기준으로 정렬한다
 
 #### 페이징 후의 코드
 ```sql
-SELECT um.is_complete, um.finish_at, m.dtype, m.mission_text, m.mission_point, m.finish_date
+SELECT um.is_complete, um.finish_at, m.dtype, m.mission_text,
+       m.mission_point, m.finish_date, s.shop_name
 FROM user_mission AS um
 INNER JOIN mission AS m ON um.mission_id = m.mission_id
+INNER JOIN shop AS s ON m.shop_id = s.shop_id
 WHERE um.user_id = ? AND (m.finish_date, um.user_mission_id) < (?, ?)
 ORDER BY m.finish_date DESC, um.user_mission_id DESC
 LIMIT 10;
 ```
 - 페이징을 위해 마감 기한과 유저 미션 id를 튜플 조건으로 사용하였다
 - 페이징 중 마감 기한이 같은 값을 만날 경우 user_mission_id를 통해 순서를 구분한다
+- 커서 조건 (m.finish_date, um.user_mission_id) < (?, ?)의 경우 첫 번째 페이지를 조회할 때는 사용되지 않도록 별도의 조치가 필요하다
+
+<br/>
+
+### 홈 화면 
+#### 현재 선택 된 지역에서 도전이 가능한 미션 목록 보여주기
+```sql
+SELECT m.dtype, m.mission_text, m.mission_point, m.finish_date, s.shop_name
+FROM mission AS m
+INNER JOIN shop AS s ON m.shop_id = s.shop_id
+WHERE s.shop_address = ? AND (m.finish_date, m.mission_id) < (?, ?)
+ORDER BY m.finish_date DESC, m.mission_id DESC
+LIMIT 10;
+```
+- 미션 테이블과 shop 테이블을 shop_id를 기준으로 join
+- 유저가 선택한 주소와 일치하는 주소를 가진 미션의 정보를 반환
+- 페이징 구현
+- 해당 쿼리문은 shop_address가 정확히 일치하는 가게만을 리턴하도록 설정되어 있다 → 주소 클래스 등을 새로 만들어 해당 부분을 해결할 수 있다
