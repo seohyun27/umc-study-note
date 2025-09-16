@@ -125,7 +125,7 @@ where r.star >= 3
 ```
 - 서브쿼리의 경우 **안쪽 쿼리를 실행해 조건을 만들고 바깥쪽 쿼리에서 그 조건을 사용**하는 단계적 방식으로 동작한다
 - 괄호 안의 서브쿼리 (select review_id...)가 가장 먼저 실행되어 review 테이블에서 별점이 3점 이상인 review_id 리스트를 생성한다
-- 만들어진 목록은 바깧 쿼리의 조건이 된다
+- 만들어진 목록은 바깥 쿼리의 조건이 된다
 - review_photo 테이블에서 review_photo의 review_id가 만들어진 목록 안에 포함되어 있는지(IN)을 검사한다
 - 검사가 끝난 review_photo 테이블에서 사진 URL 정보(photo_url)만을 select한다 
 
@@ -301,7 +301,7 @@ GROUP BY u.user_id, u.user_name, u.gender, u.birth_date, u.address;
 - 위의 결과 테이블에 mission 테이블을 LEFT JOIN
 - 이때 미션 id가 일치하는 데이터들만 join 할 것
 - 결과 테이블에서 프론트가 요청한 user_id를 가진 데이터만을 가져올 것
-- #### GROUP BY
+#### GROUP BY
 - 이후 GROUP BY를 이용해 u.user_id를 기준으로 그룹을 묶어준다
 - 만약 유저가 3번의 미션을 수행했다면 point외에 유저의 정보는 3번으로 중복되어 표현된다
 - 그러나 GROUP BY를 사용하면 필터링된 3줄의 데이터를 단 하나의 그룹으로 묶어버린다
@@ -318,4 +318,28 @@ GROUP BY u.user_id, u.user_name, u.gender, u.birth_date, u.address;
 - 두 번에 나눠 쿼리를 작성할 경우 DB에 두 번의 요청이 가게 되므로 비효율적이다
 - 또한 두 쿼리의 실행 사이 데이터가 변경될 가능성이 있다
 
+### 미션 모아보기
+#### 페이징 전의 코드
+```sql
+SELECT um.is_complete, um.finish_at, m.dtype, m.mission_text, m.mission_point, m.finish_date
+FROM user_mission AS um
+INNER JOIN mission AS m ON um.mission_id = m.mission_id
+WHERE um.user_id = ?
+ORDER BY m.finish_date DESC
+```
+- user_mission에 mission 테이블을 join 한다
+- 이때 미션 id가 같은 데이터들만이 join 된다
+- 이후 결과 테이블에서 프론트가 요청한 user_id를 가진 데이터만을 가져온다
+- 가져온 데이터들을 마감 시간을 기준으로 정렬한다
 
+#### 페이징 후의 코드
+```sql
+SELECT um.is_complete, um.finish_at, m.dtype, m.mission_text, m.mission_point, m.finish_date
+FROM user_mission AS um
+INNER JOIN mission AS m ON um.mission_id = m.mission_id
+WHERE um.user_id = ? AND (m.finish_date, um.user_mission_id) < (?, ?)
+ORDER BY m.finish_date DESC, um.user_mission_id DESC
+LIMIT 10;
+```
+- 페이징을 위해 마감 기한과 유저 미션 id를 튜플 조건으로 사용하였다
+- 페이징 중 마감 기한이 같은 값을 만날 경우 user_mission_id를 통해 순서를 구분한다
