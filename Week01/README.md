@@ -363,13 +363,13 @@ LIMIT 10;
 SELECT m.dtype, m.mission_text, m.mission_point, m.finish_date, s.shop_name
 FROM mission AS m
 INNER JOIN shop AS s ON m.shop_id = s.shop_id
-WHERE s.shop_address = ?
+WHERE s.shop_address like ?
       AND m.finish_date >= NOW()
       AND (m.finish_date, m.mission_id) < (?, ?)
 ORDER BY m.finish_date DESC, m.mission_id DESC
 LIMIT 10;
 ```
 - 미션 테이블과 shop 테이블을 shop_id를 기준으로 join
-- 유저가 선택한 주소와 일치하는 주소를 가지고 마감 기한이 지나지 않은 미션의 데이터들만을 반환
+- 유저가 선택한 주소와 유사한 주소를 가지고 마감 기한이 지나지 않은 미션의 데이터들만을 반환
+- 어플리케이션에서 데이터를 받아올 때 ? 자리에 들어갈 문자열 앞 뒤로 %를 붙여줄 것
 - 페이징 구현
-- 해당 쿼리문은 shop_address가 정확히 일치하는 가게만을 리턴하도록 설정되어 있다 → 해당 부분은 의도적으로 생략하였다
