@@ -110,6 +110,23 @@ List<Order> findByMember_Name(String name);
 
 > 그러나 메소드 이름만으로 만들 수 있는 쿼리에는 한계가 있어서 복잡한 조건이나 동적 쿼리는 결국 @Query나 QueryDSL 같은 도구가 필요하다. 또한 자동으로 생성된 쿼리가 항상 최고의 효율을 내는 것은 아니므로 최적화를 위해 실행되는 쿼리를 꼭 확인하고 분석해봐야 한다!
 
+### JPQL 문법
+- DB 테이블이 아닌 자바 엔티티를 기준으로 쿼리를 작성
+- 테이블명 → 엔티티 명
+- 테이블의 칼럼 → 엔티티 내의 어트리뷰트
+- Member.id와 같은 식으로 엔티티 내의 어트리뷰트(칼럼)을 가리킬 수 있다
+- JOIN : 일반적인 sql문의 Inner Join
+- LEFT JOIN : 일반적인 sql문의 Left Join
+- FETCH : 해당 필드(FK)에 연결된 테이블을 가져와서 지금 조회하는 객체의 필드에 미리 채워넣는다. Join만 사용할 경우 필요한 필드의 내용이 채워지지 않는다!! 따라서 Fatch join 등, fatch 구문을 이용해 N+1 문제를 해결할 수 있다
+- 완성된 JPQL 문장은 아래와 같은 방식으로 작성할 수 있다
+
+```jpaql
+SELECT sr
+FROM ShopReview sr
+JOIN FETCH sr.member m
+WHERE sr.shop.id = :shopId
+```
+
 <br/>
 
 ## QueryDSL
@@ -140,4 +157,72 @@ List<Order> findByMember_Name(String name);
 - 예를 들어 지역명으로 가게를 검색하는 쿼리에서 지역명 자리를 비워두었다가 실행 시점에 원하는 지역명을 채우는 등의 식으로 활용할 수 있다
 
 <br/>
+
+## ✅ 미션 기록
+### 1️⃣ 특정 가게의 리뷰 리스트 가져오기
+사진과 관련된 구문은 생략하였다.
+
+```jpaql
+SELECT sr
+FROM ShopReview sr
+JOIN FETCH sr.member m
+WHERE sr.shop.id = :shopId
+```
+
+<br/>
+
+### 2️⃣ 마이 페이지 화면 가져오기
+```jpaql
+SELECT new com.example.umc9th.domain.member.dto.MyPageDto(
+    m.name,
+    m.gender,
+    m.birthDate,
+    m.address,
+    COALESCE(SUM(mi.point), 0L)
+)
+FROM Member m
+LEFT JOIN MemberMission mm ON m.id = mm.member.id
+LEFT JOIN mm.mission mi
+WHERE m.id = :memberId
+GROUP BY m.id, m.name, m.gender, m.birthDate, m.address
+```
+
+<br/>
+
+### 3️⃣ 현재 선택된 유저의 모든 멤버 미션 가져오기
+진행 중 / 진행 완료된 모든 미션을 가져온다.
+```jpaql
+SELECT new com.example.umc9th.domain.mission.dto.MyMissionDto(
+    um.isCompleted,
+    um.finishAt,
+    m.dtype,
+    m.text,
+    m.point,
+    m.finishDate,
+    s.name
+)
+FROM MemberMission um
+JOIN um.mission m
+JOIN m.shop s
+WHERE um.member.id = :memberId
+ORDER BY m.finishDate DESC
+```
+
+<br/>
+
+### 4️⃣ 현재 선택 된 지역에서 도전이 가능한 미션 목록 가져오기
+```jpaql
+SELECT new com.example.umc9th.domain.mission.dto.AvailableMissionDto(
+    m.dtype,
+    m.text,
+    m.point,
+    m.finishDate,
+    s.name
+)
+FROM Mission m
+JOIN m.shop s
+WHERE s.address LIKE :addressPattern
+  AND m.finishDate >= CURRENT_TIMESTAMP
+ORDER BY m.finishDate DESC, m.id DESC
+```
 
