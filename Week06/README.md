@@ -58,9 +58,12 @@ Q클래스는 QueryDSL에서 엔티티(Entity)를 기반으로 생성되는 쿼�
 - 이를 해결하기 위해 깃허브에 무시할 파일을 설정하는 .gitignore 파일에 Q클래스가 생성되는 폴더(예: build/generated/ 또는 target/generated-sources/)를 추가한다.
 
 
+
+
+
 <br/>
 
-```javaㄴㄴ
+```java
 ```
 
 <br/>
