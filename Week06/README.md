@@ -21,6 +21,8 @@
 #### 3. QueryDSL
 - QueryDSL은 위 두 가지 개념을 합친 특정 자바/코틀린 라이브러리.
 - Java 코드 기반으로 타입에 안전한(type-safe) 데이터베이스 쿼리를 작성할 수 있게 해주는 Internal DSL이다.
+- 즉, 기본적인 문법은 모두 JPQL을 따라간다.
+- QueryDSL은 완전히 새로운 쿼리 언어가 아니라 문자열로 직접 작성하던 JPQL 쿼리문을 Java 객체와 메소드를 이용해 대신 조립해주는 도구이다!
 - Fluent API 패턴(메소드 체이닝)을 사용하여 쿼리를 구축한다.
 - QueryDSL은 Q-Type이라는 컴파일 시점에 생성되는 클래스를 사용하여, 자바 코드(객체와 메서드)로 쿼리를 작성한다.
 - 만약 쿼리 내에서 존재하지 않는 객체나 메소드를 사용하면 즉시 컴파일 에러가 발생한다.
@@ -58,27 +60,136 @@ Q클래스는 QueryDSL에서 엔티티(Entity)를 기반으로 생성되는 쿼�
 - 이를 해결하기 위해 깃허브에 무시할 파일을 설정하는 .gitignore 파일에 Q클래스가 생성되는 폴더(예: build/generated/ 또는 target/generated-sources/)를 추가한다.
 
 
-
-
-
 <br/>
 
+
+## 핵심 키워드
+
+### QueryDSL에서 FetchJoin 하는 법
+- 앞서 설명했듯이 QueryDSL는 JPQL의 문법을 따른다!
+- 필터링을 위한 join 메소드와 실제 테이블을 결합하기 위한 fetch join이 별개로 존재한다. 
+- 이 중 fetch join를 사용해야 N+1 문제 없이 원하는 데이터를 가져올 수 있다.
+
+### DTO 매핑 방식
+- DTO 생성자 @QueryProjection 어노테이션을 추가한다.
+- 이 방식은 Projections.constructor와 달리 컴파일 시점에 DTO 생성자의 타입이나 인자 개수가 잘못되면 컴파일 오류를 발생시켜서 안전하다.
+- @QueryProjection 사용 후 Gradle/Maven으로 컴파일하면 QMemberDto 클래스가 자동 생성된다.
+- @QueryProjection를 사용하면 어떠한 DTO가 다른 DTO를 필드로 가지는 구조(DTO안의 DTO)를 쿼리 한 번으로 쉽게 매핑할 수 있다.
 ```java
+// QMember가 QTeamDto를 필드로 가질 때
+
+queryFactory.select(
+        new QMemberDTO(
+                member.name,
+                new QTeamDto(team.name, team.location)))
 ```
 
+
+### 커스텀 페이지네이션
+- JPA의 Pageable 객체를 직접 사용하기 어렵거나 복잡한 join이 필요할 때 Pageable 객체를 사용하지 않고 수동으로 페이지네이션을 구현하는 방식이다.
+- 아래 2개의 쿼리가 필요하다.
+- 내용 조회 쿼리: offset()과 limit()을 사용
+- 전체 개수 조회 쿼리: select(member.count())를 사용
+```java
+// Predicate 객체, Pageable 객체가 파라미터로 넘어왔다고 가정
+
+Pageable pageable = PageRequest.of(0, 10); // 0번 페이지, 10개씩
+
+// 1. 내용 조회 쿼리
+List<Member> content = queryFactory
+        .selectFrom(member)
+        .orderBy(member.name.desc())
+        .offset(pageable.getOffset())   // 페이징 과정을 수동으로 작성
+        .limit(pageable.getPageSize())
+        .fetch();
+
+// 2. 전체 개수 조회 쿼리
+Long total = queryFactory
+        .select(member.count())
+        .from(member)
+        .where(predicate) // content 쿼리의 where 조건과 동일해야 함
+        .fetchOne();
+
+// 3. PageImpl 객체로 조합하여 반환
+return new PageImpl<>(content, pageable, total);
+```
+- 원하는 쿼리문에 페이징 시스템을 한 번 더 덧씌우는 느낌으로 생각하면 된다.
+- PageImpl 객체는 페이징을 통해 DB에서 잘라 온 10개의 데이터(content)와 전체 개수가 100만 몇 개인지를 알려주는 쿼리 결과(count)를 합쳐서 포장해주는 역할을 한다.
+- 이를 통해 List<T>만으로는 알 수 없는 페이지에 관한 정보를 프론트에게 넘길 수 있게 된다.
+
+### transform - groupBy
+- 조회 결과를 Map 같은 컬렉션으로 변환할 때, 특히 1:N 관계를 DTO로 매핑할 때 유용한 기능이다
+- 일반적인 JPQL은 SELECT 절에서 컬렉션을 반환할 수 없다.
+- 표준 JPQL의 SELECT 절은 엔티티나 DTO 같은 단일 객체만 반환할 수 있다.
+- `SELECT new TeamDto(..., List<MemberDto>)`처럼 DTO 생성자에 컬렉션(List)을 직접 넣을 수 없다는 뜻이다.
+- 그러나 QueryDSL은 transform으로 이를 가능하게 해준다.
+- transform은 map으로 반환된 쿼리 결과를 일단 메모리로 가져온다. 이후 QueryDSL이 이 데이터를 GroupBy.groupBy(...).as(...)에 맞춰 원하는 구조로 재조립해준다.
+- 단, transform은 DB에서 모든 데이터를 일단 가져와서 애플리케이션 메모리에서 그룹핑하므로 데이터가 수십만 건 이상으로 매우 많을 경우 성능 저하의 원인이 될 수 있다.
+
+### order by null
+- 정렬 메소드로 데이터를 정렬하려 할 때 해당 정렬 기준이 NULL인 값들을 모든 값의 제일 앞에 둘지, 제일 뒤에 줄 지를 지정하는 기능이다.
+- 맨 앞에이라면 nullsFirst(), 맨 뒤라면 nullsLast()를 사용한다.
+- DB마다 NULL의 기본 정렬 순서가 다르기 때문에(ex. MySQL/H2는 맨 앞, Oracle은 맨 뒤) 일관된 정렬을 위해 사용하게 된다.
+
+
 <br/>
+
 
 ## ✅ 미션 기록
-### 1️⃣ 
+- 내가 작성한 리뷰 보기 API를 QueryDSL로 구현하기
+- 필터링 조건 : 가게별, 별점별
+- 제약 조건 : 하나의 API로 설계할 것
 
-<br/>
+### 1️⃣ reviewRepositoryQueryDsl 인터페이스 생성
+```java
+public interface reviewRepositoryQueryDsl {
+    
+    List<ShopReview> searchShopReview(Predicate predicate);
+}
+```
+- QueryDSL로 구현하고 싶은 메소드들을 인터페이스 안에서 미리 정의한다.
+- 인터페이스에 정의하는 모든 메서드는 자동으로 public이고 abstract가 된다. 
+- 따라서 public이고 abstract등의 키워드 작성은 필요하지 않다. 
+- 인자로 받게 되는 Predicate 타입의 경우 queryDSL에서 제공하는 것인지 아닌지 잘 보고 import하여야 한다.
 
-### 2️⃣ 
+### 2️⃣ reviewRepositoryQueryDsl를 구현하는 구현 클래스 작성
+```java
+@Repository
+@RequiredArgsConstructor
+public class reviewRepositoryQueryDslImpl implements reviewRepositoryQueryDsl {
 
-<br/>
+    private final EntityManager em;
 
-### 3️⃣ 
+    @Override
+    public List<ShopReview> searchShopReview(Predicate predicate){
 
-<br/>
+        // JPA 세팅
+        JPAQueryFactory queryFactory = new JPAQueryFactory(em);
 
-### 
+        // Q클래스 선언
+        QShopReview review = QShopReview.shopReview;
+        QShop shop = QShop.shop;
+        QMember member = QMember.member;
+
+        return queryFactory
+                .selectFrom(review)
+                .join(review.shop, shop).fetchJoin()
+                .join(review.member, member)
+                .where(predicate)
+                .fetch();
+    }
+}
+```
+- 현재 별점은 ShopReview 엔티티 안에 존재 → Q클래스를 통한 join이 필요하지 않다.
+- join이 필요한 shop과 member의 경우 Q클래스를 통해 join한다.
+- 이때 join은 필터링(where절)을 위한 것이고 fetchJoin을 사용해야 N+1 문제 없이 테이블을 결합해서 가져온다.
+- 모든 검색의 조건은 Service에서 전달받은 Predicate를 통해 결정된다.
+- 어떤 member의 리뷰인지, 어떤 가게의 리뷰인지, 어떤 별점을 가진 리뷰인지는 서비스에서 결정되는 것.
+
+### 3️⃣ reviewRepository에 JPA와 QueryDsl 인터페이스를 둘 다 상속
+```java
+public interface reviewRepository extends JpaRepository<ShopReview, Long>, reviewRepositoryQueryDsl {...}
+```
+- 메인 인터페이스인 reviewRepository가 JpaRepository와 직접 만든 reviewRepositoryQueryDsl를 둘 다 상속
+- 서비스 계층에서는 ReviewRepository 하나만 주입받으면 reviewRepository.save() (JPA 기본 기능)와 reviewRepository.searchShopReview() (내가 만든 QueryDSL 기능)를 모두 사용할 수 있게 된다.
+
