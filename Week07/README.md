@@ -156,7 +156,7 @@ public class TestController {
 ### API 요청
 최종적으로 /temp/test 경로로 요청을 보내면 성공 메시지가 돌아오게 된다.
 
-### ⭐ Service
+### +) Service
 - 서비스를 작성할 때는 아래 두 가지 파일에 나눠 작성한다.
 - Query : GET 요청에 대한 비즈니스 로직들
 - Command : 이외 요청에 대한 비즈니스 로직들
