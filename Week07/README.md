@@ -202,6 +202,7 @@ public class TestController {
 │        ├─ 📁converter
 │        ├─ 📁dto
 │        ├─ 📁exception
+│        │    └─ ReviewExceptio
 │        └─ 📁service
 │            ├─ 📁command
 │            │    ├─ (I) ReviewCommandService
@@ -215,6 +216,7 @@ public class TestController {
          │   ├─ (I) BaseErrorCode
          │   └─ (E) GeneralErrorCode
          ├─ 📁exception
+         │   └─ GeneralException
          ├─ 📁handler
          │   └─ GeneralExceptionAdvice
          └─ ApiResponse
@@ -222,8 +224,32 @@ public class TestController {
 
 <br/>
 
+## 예외 클래스
+### 프로젝트 레벨의 예외
+RuntimeException을 상속받아 작성한다.
+```java
+@Getter
+@AllArgsConstructor
+public class GeneralException extends RuntimeException {
+
+    private final BaseErrorCode code;
+}
+```
+
+### 도메인 레벨의 예외
+프로젝트 레벨의 예외를 상속받아 작성한다.
+```java
+public class TestException extends GeneralException {
+    public TestException(BaseErrorCode code) {
+        super(code);
+    }
+}
+```
+
+<br/>
+
 ## 에러 핸들러
-- 수많은 위치에서 터진 예외들의 응답을 통일할 통일 객체가 필요하다
+- 수많은 위치에서 터진 예외들의 응답을 통일할 통일 객체가 필요하다.
 - 이를 예외 핸들러라 부른다.
 - 에러 핸들러 코드의 작성은 아래와 같다.
 
@@ -390,19 +416,4 @@ public ApiResponse<TestResDTO.Exception> exception(
 - record는 자바 16+에서 도입된 불변(immutable) 데이터 전달용 클래스이며 코드가 매우 간결하다.
 - 그러나 record는 필드 수정이나 상속이 불가능하므로 단순 DTO에만 적합하다.
 
-<br/>
-
-## ✅ 미션 기록
-
-### 1️⃣ 
-```java
-```
-
-### 2️⃣ 
-```java
-```
-
-### 3️⃣ 
-```java
-```
 
