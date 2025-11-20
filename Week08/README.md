@@ -430,9 +430,9 @@ Java에서 예외는 프로그램 실행 중 발생하는 예기치 못한 상�
 - try-catch 또는 throws 키워드로 처리하지 않으면 컴파일 에러 발생
 - 핸들러에서 변환하면 Checked도 프론트로 전달이 가능하다
 - 대표적인 예:
-  - IOException – 파일 입출력, 네트워크 등 I/O 작업 중 발생
-  - SQLException – DB 작업 중 발생
-  - ClassNotFoundException – 동적으로 클래스를 로드할 때 발생
+  - `IOException` – 파일 입출력, 네트워크 등 I/O 작업 중 발생
+  - `SQLException` – DB 작업 중 발생
+  - `ClassNotFoundException` – 동적으로 클래스를 로드할 때 발생
 
 ```java
 try {
@@ -474,7 +474,7 @@ str.length(); // NullPointerException 발생
 ```java
 public class UserDTO {
     @NotNull(message = "이름은 필수입니다")
-    private String name;ㄴㄴ
+    private String name;
 
     @Min(value = 18, message = "나이는 18세 이상이어야 합니다")
     private int age;
