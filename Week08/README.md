@@ -418,4 +418,75 @@ protected ResponseEntity<ApiResponse<Map<String, String>>> handleMethodArgumentN
 }
 ```
 
+<br>
 
+# 🎯핵심 키워드
+## 1️⃣ Java Exception 종류
+
+Java에서 예외는 프로그램 실행 중 발생하는 예기치 못한 상황을 처리하기 위해 사용된다. Checked Exception과 Unchecked Exception으로 나눌 수 있다.
+
+### ① Checked Exception
+- 컴파일 시점에 반드시 처리해야 하는 예외
+- try-catch 또는 throws 키워드로 처리하지 않으면 컴파일 에러 발생
+- 핸들러에서 변환하면 Checked도 프론트로 전달이 가능하다
+- 대표적인 예:
+  - IOException – 파일 입출력, 네트워크 등 I/O 작업 중 발생
+  - SQLException – DB 작업 중 발생
+  - ClassNotFoundException – 동적으로 클래스를 로드할 때 발생
+
+```java
+try {
+    FileReader reader = new FileReader("file.txt");
+} catch (IOException e) {
+    e.printStackTrace();
+}
+```
+
+### ② Unchecked Exception
+- 런타임에 발생 
+- 처리하지 않아도 컴파일을 통과한다 
+- 주로 프로그래밍 오류를 나타낸다
+- RuntimeException을 상속한다 
+- 프론트로 보내는 예외 대부분은 RuntimeException 계열이다
+- 대표적인 예:
+  - `NullPointerException` – null 객체 참조 시
+  - `IllegalArgumentException` – 잘못된 매개변수 전달 시
+  - `ArrayIndexOutOfBoundsException` – 배열 범위 초과 접근 시
+
+```java
+String str = null;
+str.length(); // NullPointerException 발생
+```
+
+### ③ Error
+- Exception과 달리 핸들러에서 처리하지 않는다
+- 일반적으로 try-catch로 처리하지 않고 애플리케이션이 종료된다
+
+
+## 2️⃣ @Valid
+- DTO나 메서드 파라미터에 붙여서 유효성 검사를 수행하는 어노테이션
+- 스프링에서는 @Valid와 함께 @RequestBody를 쓰면, 컨트롤러로 들어오는 요청 객체를 검증할 수 있음
+- DTO 클래스 안에는 `@NotNull`, `@Size`, `@Min`, `@Max` 같은 제약 어노테이션이 붙어 있어야 함
+- `@Validated`와 `@Valid`의 차이
+  - `@Valid` : 단일 DTO 검증
+  - `@Validated` : 그룹별 검증, 파라미터 검증 가능
+
+```java
+public class UserDTO {
+    @NotNull(message = "이름은 필수입니다")
+    private String name;ㄴㄴ
+
+    @Min(value = 18, message = "나이는 18세 이상이어야 합니다")
+    private int age;
+}
+```
+
+```java
+@PostMapping("/users")
+public ResponseEntity<String> createUser(@RequestBody @Valid UserDTO dto) {
+    return ResponseEntity.ok("성공");
+}
+```
+
+- 요청값이 제약 조건(NotNull, Min 등)을 만족하지 않으면 스프링은 MethodArgumentNotValidException을 발생시킨다.
+- 이를 다루는 핸들러 클래스를 작성할 수 있다.
