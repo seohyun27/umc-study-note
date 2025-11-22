@@ -1,15 +1,16 @@
 # 회원가입 API 만들기
-## DTO, Enum 생성
 ```java
 📁com.example.umc9th
 └─ 📁domain
     └─ 📁member
          ├─ 📁controller
+		 │    └─ MemberController
          ├─ 📁converter
+		 │    └─ MemberConverter
          ├─ 📁dto
-         │   ├─ 📁req
-         │   │    └─ MemberReqDto
-         │   └─ 📁res
+         │    ├─ 📁req
+         │    │    └─ MemberReqDto
+         │    └─ 📁res
          │        └─ MemberResDto
          ├─ 📁exception
          │    ├─ 📁code
@@ -17,8 +18,11 @@
          │    │  └─ (E) MemberSuccessCode
          │    └─ MemberException
          └─ 📁service
+		      ├─ (I) MemberCommandService
+		      └─ MemberCommandServiceImpl
 ```
 
+## DTO, Enum 생성
 ### DTO
 #### 멤버 요청 DTO
 ```java
@@ -59,7 +63,6 @@ public enum MemberSuccessCode implements BaseSuccessCode {
     FOUND(HttpStatus.OK,
             "MEMBER200_1",
             "성공적으로 사용자를 조회했습니다."),
-    ;
     
     // 회원가입 성공 시 201번 생성 코드로 돌려줌
     CREATED(HttpStatus.CREATED,
@@ -88,7 +91,6 @@ public enum MemberErrorCode implements BaseErrorCode {
     INVALID_SIGNUP_REQUEST(HttpStatus.BAD_REQUEST,
             "MEMBER400_2",
             "회원가입 요청 값이 올바르지 않습니다."),
-    ;
     
     NOT_FOUND(HttpStatus.NOT_FOUND,
             "MEMBER404_1",
@@ -151,7 +153,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 구현체에서 구현하고자 하는 메소드를 미리 정의한다.
 ```java
 public interface MemberCommandService{
-    MemberResDTO.JoinDTO singup(MemberReqDTO.Join dto);
+    MemberResDTO.JoinDTO singup(MemberReqDTO.JoinDTO dto);
 }
 ```
 
@@ -165,7 +167,7 @@ public class MemberCommandServiceImpl implements MemberCommandService{
     private final MemberRepository memberRepository;
 
     @Override
-    public MemberResDTO.JoinDTO signup(MemberReqDTO.JoinDTO dto){
+    public MemberResDTO.JoinDTO signup(MemberReqDTO.JoinDTO dto) {
         // 로직 생략
         return null;
     }
@@ -259,8 +261,15 @@ public class MemberCommandServiceImpl implements MemberCommandService{
 - Swagger를 사용하면 매번 Postman을 사용할 필요 없이 개발한 API들을 확인하고 테스트할 수 있다.
 - 프로젝트의 컨트롤러를 기반으로 API 명세 문서와 테스트를 위한 UI 화면을 제공해준다.
 - 스프링 부트 프로젝트에 Swagger(OpenAPI) 라이브러리를 추가하면 해당 기능들을 사용할 수 있다.
+
+```java
+dependencies {
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0'
+}
+```
+  
 - build.gradle에 라이브러리를 추가한 뒤 SwaggerConfig를 작성한다.
-- 서버의 실행 수 브라우저에서 `http:\//localhost:8080/swagger-ui/index.html#/`를 열면 해당 기능들을 사용할 수 있다.
+- 서버의 실행 수 브라우저에서 `http://localhost:8080/swagger-ui/index.html#/`를 열면 해당 기능들을 사용할 수 있다.
 
 ### SwaggerConfig
 ```java
