@@ -5,9 +5,9 @@
 ```java
 dependencies {
 ...
-		// Security
+    // Security
     implementation 'org.springframework.boot:spring-boot-starter-security'
-		testImplementation 'org.springframework.security:spring-security-test'
+	testImplementation 'org.springframework.security:spring-security-test'
 ...
 }
 ```
@@ -64,22 +64,22 @@ dependencies {
 - 모든 필터를 통과한 요청만이 실제 어플리케이션 로직에 도달할 수 있다.
 
 #### 주요 필터들
-SecurityContextPersistenceFilter
+**SecurityContextPersistenceFilter**
 - 요청 간 SecurityContext를 유지
 - 새 요청이 들어올 때 이전에 인증된 사용자의 정보를 복원
 
-UsernamePasswordAuthenticationFilter
+**UsernamePasswordAuthenticationFilter**
 - 폼 기반 로그인을 처리
 - 사용자가 제출한 username과 password를 확인하여 인증을 시도
 
-AnonymousAuthenticationFilter
+**AnonymousAuthenticationFilter**
 - 이전 필터에서 인증되지 않은 요청에 대해 익명 사용자 인증을 제공
 
-ExceptionTranslationFilter
+**ExceptionTranslationFilter**
 - Spring Security 예외를 HTTP 응답으로 변환
 - 인증 실패 시 로그인 페이지로 리다이렉트하거나, 인가 실패 시 403 오류를 반환
 
-FilterSecurityInterceptor
+**FilterSecurityInterceptor**
 - 접근 제어 결정을 내리는 마지막 필터
 - 현재 인증된 사용자가 요청한 리소스에 접근할 권한이 있는지 확인
 
@@ -111,7 +111,7 @@ FilterSecurityInterceptor
 @Configuration
 public class SecurityConfig {
 
-    /// 허용할 Url을 따로 빼서 관리 ///
+    /// 허용할 Url을 따로 빼서 관리
     private final String[] allowUris = {
 			// Swagger 허용
             "/swagger-ui/**",
@@ -120,7 +120,7 @@ public class SecurityConfig {
     };
 
 
-    /// SecurityFilterChain을 정의 ///
+    /// SecurityFilterChain을 정의
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -179,7 +179,7 @@ public class Member extends BaseEntity {
 ```java
 		...
 		
-		// Password Encoder
+	// Password Encoder
     private final PasswordEncoder passwordEncoder;
 
     // 회원가입
